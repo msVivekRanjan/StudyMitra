@@ -1,7 +1,5 @@
 import {
   Sparkle,
-  UploadSimple,
-  ArrowUpRight,
   FileText,
   ListBullets,
   CheckCircle,
@@ -43,32 +41,21 @@ export default function Welcome({
             setUpload(true);
           }}
         >
-          <div className="start-card-top">
-            <span className="light-icon">
-              <UploadSimple size={24} />
-            </span>
-            <span className="tiny-pill">Start here</span>
-          </div>
           <h3>
             {focus ? (
               "Add your study materials"
             ) : (
               <>
                 Drop the notes.
-                <br />
-                Unlock the knowledge.
+                <br /> Unlock the knowledge.
               </>
             )}
           </h3>
           <p>
             PDFs, lecture notes, textbooks.
-            <br />
-            Your whole syllabus, one space.
+            <br /> Your whole syllabus, one space.
           </p>
-          <span className="card-link">
-            Add study materials
-            <ArrowUpRight size={20} />
-          </span>
+          <span className="card-link">Add materials</span>
           <div className="file-stack" aria-hidden="true">
             <div className="paper paper-back">
               <ListBullets size={22} />
@@ -100,7 +87,6 @@ export default function Welcome({
                 <span className="tool-icon">
                   <Icon size={23} weight="duotone" />
                 </span>
-                <ArrowUpRight className="tool-arrow" size={17} />
                 <h3>{focus ? label : title}</h3>
                 <p>
                   {focus

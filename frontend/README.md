@@ -53,3 +53,39 @@ Browser checks use installed Microsoft Edge via Playwright and a running app on 
 - `dist/` — generated production bundle; do not edit
 
 Both themes and focus mode persist. Reduced-motion preferences are respected. Markdown is rendered without raw HTML execution. All six original answer modes, source excerpts, streaming, stop, history, filters, upload metadata, deletion and reindexing are retained. The existing backend has no original-file download endpoint, so server documents show metadata and answer citations; local files support full preview/download.
+## Workspace layout and backend flow
+
+The app owns one viewport. The chat main area has four rows: heading, study toolbar, scrollable conversation/welcome, and composer. The composer stays visible while answers scroll. On phones the floating navigation moves to a bottom dock. Focus mode collapses desktop navigation while keeping chat, library, new chat and history available. Theme/focus changes use a bounded View Transition when supported; reduced-motion users get an immediate change.
+
+- `src/components/Navigation.jsx` — floating navigation, compact rail and phone dock
+- `src/styles/workspace.css` — authoritative viewport layout and glass treatment, loaded after shared `app.css`
+- `src/features/LibraryBrowser.jsx` — semester → subject → category → document navigation
+- `src/features/DocumentCard.jsx` — unchanged document preview, deletion and reindex actions
+- `src/lib/library.js` — pure grouping over actual metadata, with unassigned buckets
+- `src/lib/transitions.js` — whole-workspace transitions with a reduced-motion fallback
+
+Backend source and deployment configuration are unchanged by this layout update. Upload still posts the file and metadata to `/api/documents/upload`; indexing loads, chunks, embeds, writes vectors/metadata and updates document status. The UI reads `/api/documents` and groups its `semester`, `subject`, and `doc_type` fields locally. Original category strings, including existing values such as `notes`, remain unchanged when used as chat filters. The chat still posts `{ query, mode, filters, top_k }` to `/api/chat/stream` and handles `token`, `sources`, `error` and `done` events. AI output is never synthesized in offline mode.
+
+Additional checks (app running on port 3000):
+
+```powershell
+node tests/workspace-check.mjs
+node tests/dropdown-check.mjs
+```
+
+The workspace check uses isolated, explicitly mocked backend fixtures. It verifies viewport containment at eight sizes, welcome/composer visibility, role alignment, long-answer scrolling, hierarchy and missing metadata, raw API filter values, citations, dark/focus states and reduced motion. It does not claim to validate a live backend or model.
+### Compact masthead and message controls
+
+`components/Brand.jsx` keeps branding at the upper left on the shared page gradient. `components/Navigation.jsx` uses a centered 70dvh panel on desktop, a compact rail in focus mode, and the bottom dock on phones. The masthead consists of independent Focus/theme controls and a centered heading; it has no full-width bar or connection-status label. Upload remains in the library and welcome flow.
+
+`components/StudyModes.jsx` measures the selected study button and moves a single glass indicator across the panel, in either theme. `features/Composer.jsx` exposes an Expand/Shrink message box control. Both motions honor reduced-motion preferences. Unapproved logo concepts are kept outside the shipping app.
+### Resources and uploading
+
+`features/UploadPanel.jsx` is a separate, compact view within the library. Selecting Add materials replaces the resource browser instead of appending a form above it. The Resources button returns to the semester/subject/category browser. Counts, search, filters and existing document cards are not mounted underneath the upload form. The default form fits one viewport, using a split layout on desktop and two-column metadata on phones; its optional description opens in place.
+
+`node tests/resources-upload-check.mjs` verifies aligned controls, removed bento decoration, upload containment at seven sizes, description and metadata persistence, local saving, Resources navigation and dark mode. Backend endpoints and payload field names are unchanged.
+### Aligned tools and local profile
+
+`lib/controlAlignment.js` observes the workspace controls and anchors Focus to Explain's left edge, while the shared theme/profile pill matches the document-type filter's right edge and width. The study mode strip caps at 680px (740px on wide desktops), leaving at least 32px between it and the filters. Tablet layouts move the heading beneath the controls to avoid overlaps.
+
+`components/ThemeProfile.jsx` offers separate accessible theme/profile actions inside one glass pill. Profile display names are saved only in this browser under `sm-profile-name`; no account or backend API is introduced. Run `node tests/control-alignment-check.mjs` to verify measured alignment, profile persistence, themes, focus and mobile containment.

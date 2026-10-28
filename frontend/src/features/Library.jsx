@@ -1,22 +1,16 @@
-import Dropdown from "../components/Dropdown";
+import UploadPanel from "./UploadPanel";
+import LibraryBrowser from "./LibraryBrowser";
 import {
   Plus,
   Books,
   FolderOpen,
   ListBullets,
   FileText,
-  X,
-  UploadSimple,
-  CheckCircle,
   MagnifyingGlass,
-  ArrowUpRight,
-  Trash,
   ArrowClockwise,
   WifiSlash,
 } from "@phosphor-icons/react";
-import IconButton from "../components/IconButton";
 import { size } from "../lib/utils";
-import { types, typeLabel } from "../lib/studyModes";
 export default function Library({
   focus,
   allDocs,
@@ -38,6 +32,9 @@ export default function Library({
   setSearch,
   filters,
   filtered,
+  semester,
+  subject,
+  docType,
   setSubject,
   setSemester,
   setDocType,
@@ -48,17 +45,41 @@ export default function Library({
   check,
   checking,
 }) {
+  if (upload)
+    return (
+      <>
+        <div className="upload-navigation">
+          <button
+            className="secondary"
+            onClick={() => {
+              setUpload(false);
+              setError("");
+            }}
+          >
+            <Books size={18} />
+            Resources
+          </button>
+        </div>
+        <UploadPanel
+          {...{
+            online,
+            uploadFile,
+            fileInput,
+            chooseFile,
+            drag,
+            setDrag,
+            file,
+            uploading,
+            error,
+            subjects,
+            focus,
+          }}
+        />
+      </>
+    );
   return (
     <>
       <div className="page-heading">
-        <div>
-          <h1>{focus ? "Document library" : "Your knowledge, collected."}</h1>
-          <p>
-            {focus
-              ? "Manage your study documents and metadata."
-              : "Less “where did I save that?” More “I’ve got this.”"}
-          </p>
-        </div>
         <button
           className="primary"
           onClick={() => {
@@ -67,7 +88,7 @@ export default function Library({
           }}
         >
           <Plus size={19} />
-          {upload ? "Close upload" : "Add materials"}
+          Add materials
         </button>
       </div>
       <div className="library-summary">
@@ -91,143 +112,6 @@ export default function Library({
           {size(allDocs.reduce((n, d) => n + (d.file_size || 0), 0))} total
         </span>
       </div>
-      {upload && (
-        <section className="upload-panel">
-          <div className="section-heading">
-            <div>
-              <h2>
-                {focus ? "Upload a document" : "Give your notes a new home."}
-              </h2>
-              <p>
-                {online
-                  ? "Upload and index your materials for grounded answers."
-                  : "Files are saved in this browser. Connect the backend later to index them for AI."}
-              </p>
-            </div>
-            <IconButton label="Close upload" onClick={() => setUpload(false)}>
-              <X size={20} />
-            </IconButton>
-          </div>
-          <form onSubmit={uploadFile}>
-            <input
-              ref={fileInput}
-              type="file"
-              accept=".pdf,.md,.txt"
-              hidden
-              onChange={(e) => chooseFile(e.target.files[0])}
-            />
-            <button
-              type="button"
-              className={"dropzone " + (drag ? "dragging" : "")}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDrag(true);
-              }}
-              onDragLeave={() => setDrag(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDrag(false);
-                chooseFile(e.dataTransfer.files[0]);
-              }}
-              onClick={() => fileInput.current.click()}
-            >
-              <UploadSimple size={33} weight="duotone" />
-              <strong>
-                {file
-                  ? file.name
-                  : focus
-                    ? "Choose a document to upload"
-                    : "Drop it like it’s a PDF."}
-              </strong>
-              <span>
-                {file
-                  ? `${size(file.size)} · Click to replace`
-                  : "Drag a file here or browse files"}
-              </span>
-              <small>PDF, Markdown, TXT · Up to 50 MB per file</small>
-            </button>
-            <div className="upload-fields">
-              <label>
-                Document title
-                <input
-                  name="title"
-                  placeholder="e.g. Operating Systems — Unit 3"
-                  maxLength={200}
-                />
-              </label>
-              <label>
-                Subject
-                <input
-                  name="subject"
-                  placeholder="e.g. Computer Science"
-                  maxLength={100}
-                  list="subjects"
-                />
-                <datalist id="subjects">
-                  {subjects.map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </datalist>
-              </label>
-              <label>
-                Semester
-                <Dropdown name="semester">
-                  <option value="">Not specified</option>
-                  {Array.from({ length: 8 }, (_, i) => (
-                    <option key={i} value={i + 1}>
-                      Semester {i + 1}
-                    </option>
-                  ))}
-                </Dropdown>
-              </label>
-              <label>
-                Document type
-                <Dropdown name="doc_type">
-                  {types.map((t) => (
-                    <option key={t} value={t}>
-                      {typeLabel(t)}
-                    </option>
-                  ))}
-                </Dropdown>
-              </label>
-              <label className="full-field">
-                Description <span>(optional)</span>
-                <textarea
-                  name="description"
-                  placeholder="Anything useful to remember about these notes"
-                  maxLength={1000}
-                />
-              </label>
-            </div>
-            {error && (
-              <p className="form-error" role="alert">
-                {error}
-              </p>
-            )}
-            <div className="upload-footer">
-              <span>
-                <CheckCircle size={17} />
-                {online
-                  ? "Ready for your study library"
-                  : "Saved locally, never presented as AI-indexed"}
-              </span>
-              <button className="primary" disabled={!file || uploading}>
-                {uploading ? (
-                  <>
-                    <ArrowClockwise className="spin" />
-                    Saving…
-                  </>
-                ) : (
-                  <>
-                    <UploadSimple size={18} />
-                    {online ? "Upload & index" : "Save to my library"}
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </section>
-      )}
       <div className="library-toolbar">
         <div className="search-field">
           <MagnifyingGlass size={19} />
@@ -240,78 +124,13 @@ export default function Library({
         </div>
         {filters}
       </div>
-      <div className="section-heading">
-        <h2>
-          All materials <span className="muted">{filtered.length}</span>
-        </h2>
-        <span className="muted small">
-          {focus
-            ? "Search and filter your documents."
-            : "Your next breakthrough is in here."}
-        </span>
-      </div>
       {filtered.length ? (
-        <div className="document-grid">
-          {filtered.map((d) => (
-            <article className="document-card" key={d.id}>
-              <div className="document-top">
-                <span className="doc-icon">
-                  <FileText size={28} weight="duotone" />
-                </span>
-                <span className="file-type">{d.file_type || "DOC"}</span>
-                <IconButton
-                  label={"Delete " + (d.title || d.original_filename)}
-                  onClick={() => setDeleting(d)}
-                >
-                  <Trash size={18} />
-                </IconButton>
-              </div>
-              <button className="document-title" onClick={() => openDoc(d)}>
-                {d.title || d.original_filename}
-                <ArrowUpRight size={17} />
-              </button>
-              <p className="doc-filename">{d.original_filename}</p>
-              <div className="doc-tags">
-                {d.subject && <span>{d.subject}</span>}
-                {d.semester && <span>Sem {d.semester}</span>}
-                {d.doc_type && <span>{typeLabel(d.doc_type)}</span>}
-              </div>
-              <div className="document-footer">
-                <span className="doc-state">
-                  {d.status === "local" ? (
-                    <>
-                      <span className="status-dot" />
-                      Local only
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle size={15} />
-                      {d.status || "Indexed"}
-                    </>
-                  )}
-                </span>
-                <span>{size(d.file_size || 0)}</span>
-              </div>
-              <div className="doc-actions">
-                <button className="text-button" onClick={() => openDoc(d)}>
-                  View document
-                  <ArrowUpRight size={15} />
-                </button>
-                <button
-                  className="text-button"
-                  disabled={reindexing === d.id}
-                  onClick={() => reindex(d)}
-                >
-                  <ArrowClockwise
-                    size={15}
-                    className={reindexing === d.id ? "spin" : ""}
-                  />
-                  {d.status === "local" ? "Index for AI" : "Re-index"}
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
+        <LibraryBrowser
+          documents={filtered}
+          search={search}
+          resetKey={`${semester}|${subject}|${docType}`}
+          {...{ openDoc, setDeleting, reindexing, reindex }}
+        />
       ) : (
         <div className="empty-library">
           <Books size={46} weight="duotone" />

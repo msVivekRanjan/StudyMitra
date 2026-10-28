@@ -1,38 +1,27 @@
+import ThemeProfile from "./components/ThemeProfile";
+import { useControlAlignment } from "./lib/controlAlignment";
+import Brand from "./components/Brand";
+import StudyModes from "./components/StudyModes";
+import Navigation from "./components/Navigation";
+import { transitionWorkspace } from "./lib/transitions";
 import Dropdown from "./components/Dropdown";
 import { useEffect, useState, useRef } from "react";
 import {
-  BookOpen,
   Chats,
   Books,
   Plus,
   ArrowUpRight,
-  ArrowRight,
-  ArrowUp,
   Sun,
   Moon,
   Crosshair,
   Sparkle,
-  Lightning,
-  FileText,
-  GraduationCap,
-  ListBullets,
-  Scales,
-  Exam,
-  Question,
   UploadSimple,
-  MagnifyingGlass,
   X,
   Check,
   Trash,
   ArrowClockwise,
-  WifiSlash,
-  Paperclip,
-  Stop,
   Copy,
   DownloadSimple,
-  CaretRight,
-  Clock,
-  FolderOpen,
   CheckCircle,
   SlidersHorizontal,
 } from "@phosphor-icons/react";
@@ -78,12 +67,19 @@ export default function App() {
     [drag, setDrag] = useState(false),
     [reindexing, setReindexing] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const workspaceRef = useRef(null);
+  useControlAlignment(workspaceRef, page);
   const fileInput = useRef(),
     controller = useRef(),
     bottom = useRef(),
+    conversation = useRef(),
+    stickToBottom = useRef(true),
     composer = useRef();
   const allDocs = [...docs, ...localDocs],
     subjects = [...new Set(allDocs.map((d) => d.subject).filter(Boolean))],
+    availableTypes = [
+      ...new Set([...types, ...allDocs.map((d) => d.doc_type).filter(Boolean)]),
+    ],
     current = sessions.find((s) => s.id === active),
     messages = current?.messages || [],
     selectedMode = modes.find((m) => m[0] === mode);
@@ -116,8 +112,9 @@ export default function App() {
     }
   }, [toast]);
   useEffect(() => {
-    bottom.current?.scrollIntoView({ behavior: "instant", block: "end" });
-  }, [messages.length, busy]);
+    if (stickToBottom.current && conversation.current)
+      conversation.current.scrollTop = conversation.current.scrollHeight;
+  }, [messages.length, messages.at(-1)?.content, busy, active]);
   useEffect(() => {
     return () => {
       if (preview?.url) URL.revokeObjectURL(preview.url);
@@ -285,6 +282,7 @@ export default function App() {
       return;
     }
     let id = active || crypto.randomUUID();
+    stickToBottom.current = true;
     const prompt = query.trim();
     const answer = {
       id: crypto.randomUUID(),
@@ -398,7 +396,7 @@ export default function App() {
         onChange={(e) => setDocType(e.target.value)}
       >
         <option value="">All types</option>
-        {types.map((t) => (
+        {availableTypes.map((t) => (
           <option key={t} value={t}>
             {typeLabel(t)}
           </option>
@@ -419,216 +417,84 @@ export default function App() {
     </div>
   );
   return (
-    <div className="app-shell">
+    <div className={"app-shell" + (focus ? " focus-layout" : "")}>
       <a className="skip-link" href="#main">
         Skip to workspace
       </a>
-      <aside className="sidebar">
-        <a className="brand" href="#chat" onClick={() => navigate("chat")}>
-          <span className="brand-mark">
-            <BookOpen size={25} weight="bold" />
-          </span>
-          StudyMitra<span className="brand-dot">.</span>
-        </a>
-        <button className="new-chat" onClick={newChat} disabled={busy}>
-          <Plus size={19} />
-          New study chat<kbd>+</kbd>
-        </button>
-        <nav aria-label="Main navigation">
+      <Brand navigate={navigate} />
+      <Navigation
+        {...{
+          page,
+          navigate,
+          newChat,
+          busy,
+          focus,
+          sessions,
+          active,
+          setActive,
+          setSessions,
+          setHistoryOpen,
+        }}
+      />
+      <div className="workspace" ref={workspaceRef}>
+        <header className="masthead">
           <button
-            className={page === "chat" ? "nav-item active" : "nav-item"}
-            onClick={() => navigate("chat")}
+            className={"focus-toggle glass-panel " + (focus ? "enabled" : "")}
+            onClick={() => transitionWorkspace(() => setFocus((v) => !v))}
+            aria-pressed={focus}
           >
-            <Chats size={21} weight={page === "chat" ? "fill" : "regular"} />
-            Study space
-            <ArrowUpRight size={16} />
-          </button>
-          <button
-            className={page === "library" ? "nav-item active" : "nav-item"}
-            onClick={() => navigate("library")}
-          >
-            <Books size={21} weight={page === "library" ? "fill" : "regular"} />
-            My library<span className="count">{allDocs.length}</span>
-          </button>
-        </nav>
-        <div className="history">
-          <div className="section-label">
-            Recent chats <Clock size={14} />
-          </div>
-          {sessions.length === 0 ? (
-            <p className="muted small">
-              {focus
-                ? "No conversations yet."
-                : "Your next big “aha” starts here."}
-            </p>
-          ) : (
-            sessions.slice(0, 8).map((s) => (
-              <div className="history-row" key={s.id}>
-                <button
-                  disabled={busy}
-                  className={active === s.id ? "selected" : ""}
-                  onClick={() => {
-                    setActive(s.id);
-                    navigate("chat");
-                  }}
-                >
-                  <Chats size={16} />
-                  <span>{s.title}</span>
-                </button>
-                <IconButton
-                  label="Delete chat"
-                  disabled={busy}
-                  onClick={() => {
-                    setSessions((v) => v.filter((x) => x.id !== s.id));
-                    if (active === s.id) setActive(null);
-                  }}
-                >
-                  <X size={14} />
-                </IconButton>
-              </div>
-            ))
-          )}
-        </div>
-        <div className="sidebar-bottom">
-          {!focus && (
-            <div className="desk-note">
-              <Sparkle size={22} />
-              <strong>
-                A little progress.
-                <br />A lot of possibility.
-              </strong>
-              <p>
-                Your notes have potential.
-                <br />
-                Let’s put them to work.
-              </p>
-            </div>
-          )}
-          <button className="connection" onClick={check} disabled={checking}>
-            <span className={online ? "status-dot online" : "status-dot"} />
-            <span>
-              {checking
-                ? "Checking connection…"
-                : online
-                  ? "Backend connected"
-                  : "Local preview"}
-              <small>
-                {online
-                  ? "AI tools are ready"
-                  : "Documents stay in this browser"}
-              </small>
+            <Crosshair size={18} />
+            <span>Focus mode</span>
+            <span className="switch">
+              <i />
             </span>
-            <ArrowClockwise size={16} className={checking ? "spin" : ""} />
           </button>
-          <div className="profile">
-            <span className="avatar">S</span>
-            <div>
-              <strong>Your study corner</strong>
-              <small>
-                {focus ? "Personal workspace" : "One concept at a time"}
-              </small>
-            </div>
-            <BookOpen size={18} />
+          <div className="masthead-title">
+            <h1>
+              {page === "library"
+                ? upload
+                  ? "Add materials"
+                  : focus
+                    ? "Document library"
+                    : "Your knowledge, collected."
+                : focus
+                  ? "Study workspace"
+                  : "Big questions. Clear answers."}
+            </h1>
+            <p>
+              {page === "library"
+                ? upload
+                  ? "Bring a file. Keep your resources organized."
+                  : "Semester by semester. Everything in its place."
+                : focus
+                  ? "Ask questions grounded in your documents."
+                  : "Your notes, untangled. Your next “ohhh, got it”, right here."}
+            </p>
           </div>
-        </div>
-      </aside>
-      <div className="workspace">
-        <header className="topbar">
-          <div className="breadcrumb">
-            Workspace
-            <CaretRight size={13} />
-            <strong>{page === "chat" ? "Study space" : "My library"}</strong>
-          </div>
-          <div className="top-actions">
-            <div className="compact-chat-actions">
-              <IconButton
-                label="New study chat"
-                disabled={busy}
-                onClick={newChat}
-              >
-                <Plus size={19} />
-              </IconButton>
-              <IconButton
-                label="Open chat history"
-                onClick={() => setHistoryOpen(true)}
-              >
-                <Clock size={19} />
-              </IconButton>
-            </div>
-            <button
-              className={"focus-toggle " + (focus ? "enabled" : "")}
-              onClick={() => setFocus((v) => !v)}
-              aria-pressed={focus}
-            >
-              <Crosshair size={18} />
-              <span>Focus mode</span>
-              <span className="switch">
-                <i />
-              </span>
-            </button>
-            <span className="top-divider" />
-            <IconButton
-              label={
-                theme === "light"
-                  ? "Switch to dark mode"
-                  : "Switch to light mode"
-              }
-              onClick={() =>
-                setTheme((v) => (v === "light" ? "dark" : "light"))
-              }
-            >
-              {theme === "light" ? <Moon size={21} /> : <Sun size={21} />}
-            </IconButton>
-            <span className="avatar small-avatar">S</span>
-          </div>
+          <ThemeProfile
+            theme={theme}
+            toggleTheme={() =>
+              transitionWorkspace(() =>
+                setTheme((v) => (v === "light" ? "dark" : "light")),
+              )
+            }
+          />
         </header>
         <main
           id="main"
-          className={"main " + (page === "chat" ? "chat-main" : "library-main")}
+          className={
+            "main " +
+            (page === "chat"
+              ? "chat-main"
+              : "library-main" + (upload ? " is-uploading" : ""))
+          }
         >
           {page === "chat" ? (
             <>
-              <div className="page-heading">
-                <div>
-                  <h1>
-                    {focus
-                      ? "Study workspace"
-                      : "Big questions. Clear answers."}
-                    <span className="heading-spark">
-                      <Sparkle weight="fill" />
-                    </span>
-                  </h1>
-                  <p>
-                    {focus
-                      ? "Ask questions grounded in your documents."
-                      : "Your notes, untangled. Your next “ohhh, got it”, right here."}
-                  </p>
-                </div>
-                <button
-                  className="secondary"
-                  onClick={() => {
-                    navigate("library");
-                    setUpload(true);
-                  }}
-                >
-                  <UploadSimple size={18} />
-                  Add materials
-                </button>
+              <div className="study-toolbar">
+                <StudyModes {...{ mode, setMode }} />
+                {filters}
               </div>
-              <div className="mode-bar" role="group" aria-label="Answer mode">
-                {modes.map(([id, label, Icon]) => (
-                  <button
-                    key={id}
-                    className={mode === id ? "mode active" : "mode"}
-                    aria-pressed={mode === id}
-                    onClick={() => setMode(id)}
-                  >
-                    <Icon size={19} weight={mode === id ? "fill" : "regular"} />
-                    {label}
-                  </button>
-                ))}
-              </div>
-              {filters}
               {messages.length === 0 ? (
                 <Welcome
                   {...{
@@ -642,7 +508,17 @@ export default function App() {
                   }}
                 />
               ) : (
-                <section className="conversation" aria-label="Conversation">
+                <section
+                  ref={conversation}
+                  className="conversation"
+                  aria-label="Conversation"
+                  tabIndex={0}
+                  onScroll={(e) => {
+                    const el = e.currentTarget;
+                    stickToBottom.current =
+                      el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+                  }}
+                >
                   {messages.map((m) => (
                     <article key={m.id} className={"message " + m.role}>
                       <div className="message-label">
@@ -781,6 +657,9 @@ export default function App() {
                 setSearch,
                 filters,
                 filtered,
+                subject,
+                semester,
+                docType,
                 setSubject,
                 setSemester,
                 setDocType,
@@ -794,17 +673,6 @@ export default function App() {
             />
           )}
         </main>
-        <footer className="workspace-footer">
-          <span>
-            {focus
-              ? "Personal study workspace"
-              : "Made for your next lightbulb moment."}
-          </span>
-          <span>
-            StudyMitra <span className="footer-dot">/</span>{" "}
-            {focus ? "Document-grounded study" : "Your pace. Your space."}
-          </span>
-        </footer>
       </div>
       {toast && (
         <div className="toast" role="status">
